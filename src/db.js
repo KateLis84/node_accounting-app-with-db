@@ -29,8 +29,6 @@ const sequelize = new Sequelize({
   password: POSTGRES_PASSWORD || '123123',
 });
 
-sequelize.sync();
-
 module.exports = {
   sequelize,
 };

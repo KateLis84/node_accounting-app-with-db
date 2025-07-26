@@ -2,13 +2,13 @@
 
 const express = require('express');
 const userRoutes = require('./routes/userRoutes');
-const useExpenses = require('./routes/expensesRoutes');
+const expensesRoutes = require('./routes/expensesRoutes');
 
 function createServer() {
   const app = express();
 
   app.use('/users', express.json(), userRoutes);
-  app.use('/expenses', express.json(), useExpenses);
+  app.use('/expenses', express.json(), expensesRoutes);
 
   return app;
 }
