@@ -1,5 +1,3 @@
-'use strict';
-
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../db.js');
 
@@ -22,8 +20,9 @@ const Expense = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    category: {
-      type: DataTypes.STRING,
+    categoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     note: {
       type: DataTypes.STRING,
@@ -35,6 +34,4 @@ const Expense = sequelize.define(
   },
 );
 
-module.exports = {
-  Expense,
-};
+module.exports = { Expense };

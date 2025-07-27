@@ -1,20 +1,36 @@
 const { Op } = require('sequelize');
 const { Expense } = require('../models/Expense.model');
-const userService = require('../services/userService');
+const categoryService = require('../services/categoryService');
+const { Category } = require('../models/Category.model');
 
-function getExpenses({ userId: queryUserId, categories, to, from }) {
+async function getExpenses({ userId, categories, from, to }) {
   const filter = {};
 
-  if (queryUserId) {
-    filter.userId = queryUserId;
+  if (userId) {
+    filter.userId = +userId;
   }
 
   if (categories) {
-    const categoriesArray =
-      typeof categories === 'string' ? categories.split(',') : categories || [];
+    const categoryNames = Array.isArray(categories)
+      ? categories
+      : categories.split(',');
 
-    filter.category = {
-      [Op.in]: categoriesArray,
+    const categoryRecords = await Category.findAll({
+      where: {
+        category: {
+          [Op.in]: categoryNames,
+        },
+      },
+    });
+
+    const categoryIds = categoryRecords.map((c) => c.id);
+
+    if (categoryIds.length === 0) {
+      return [];
+    }
+
+    filter.categoryId = {
+      [Op.in]: categoryIds,
     };
   }
 
@@ -32,11 +48,22 @@ function getExpenses({ userId: queryUserId, categories, to, from }) {
 
   return Expense.findAll({
     where: filter,
+    include: [
+      {
+        model: Category,
+        as: 'category',
+        attributes: ['category'],
+      },
+    ],
   });
 }
 
-function getExpenseById(id) {
-  return Expense.findByPk(id);
+async function getExpenseById(id, includeCategory = false) {
+  return Expense.findByPk(id, {
+    include: includeCategory
+      ? [{ model: Category, as: 'category', attributes: ['category'] }]
+      : [],
+  });
 }
 
 async function createExpense({
@@ -47,10 +74,13 @@ async function createExpense({
   category,
   note,
 }) {
-  const user = await userService.getUserById(userId);
+  let categoryId = null;
 
-  if (!user) {
-    return null;
+  if (category) {
+    const categoryInstance =
+      await categoryService.getOrCreateCategoryByName(category);
+
+    categoryId = categoryInstance.id;
   }
 
   return Expense.create({
@@ -58,8 +88,8 @@ async function createExpense({
     spentAt,
     title,
     amount,
-    category,
-    note: note || '',
+    categoryId,
+    note,
   });
 }
 
@@ -70,12 +100,20 @@ async function updateExpense(id, newValues) {
     return null;
   }
 
-  const [updatedNumber] = await Expense.update(
-    { ...newValues },
-    {
-      where: { id },
-    },
-  );
+  const updateData = { ...newValues };
+
+  if (newValues.category) {
+    const categoryInstance = await categoryService.getOrCreateCategoryByName(
+      newValues.category,
+    );
+
+    updateData.categoryId = categoryInstance.id;
+    delete updateData.category;
+  }
+
+  const [updatedNumber] = await Expense.update(updateData, {
+    where: { id },
+  });
 
   return updatedNumber;
 }
